@@ -1,0 +1,6 @@
+<settings>
+    <category label="Corridor Digital">
+        <setting label="Email" type="text" id="email" />
+        <setting label="Password" type="text" id="password" option="hidden" />
+    </category>
+</settings>

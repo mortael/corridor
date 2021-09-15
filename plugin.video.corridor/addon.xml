@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.corridor"
+version="1.0.1"
+name="Corridor Digital"
+provider-name="mortael">
+<requires>
+  <import addon="xbmc.python" version="3.0.0"/>
+  <import addon="script.module.requests"/>
+  <import addon="script.module.six" />
+  <import addon="script.module.inputstreamhelper" />
+</requires>
+<extension point="xbmc.python.pluginsource" library="main.py">
+  <provides>video</provides>
+</extension>
+<extension point="xbmc.addon.metadata">
+  <summary lang="en">Corridor Digital</summary>
+  <description lang="en_GB">Addon for the Corridor Digital videos</description>
+  <disclaimer lang="en_GB">All videos are provided by Corridor Digital (www.corridordigital.com)</disclaimer>
+  <assets>
+    <icon>icon.png</icon>
+    <fanart>fanart.jpg</fanart>
+    <!-- <screenshot>resources\screenshot-01.jpg</screenshot> -->
+  </assets>
+  <news>Initial release</news>
+</extension>
+</addon>
