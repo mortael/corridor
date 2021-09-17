@@ -1,5 +1,4 @@
-import xbmc
-import xbmcaddon
+from kodi_six import xbmc, xbmcaddon
 import six
 
 addon = xbmcaddon.Addon()
