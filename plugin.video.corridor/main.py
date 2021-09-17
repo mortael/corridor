@@ -2,16 +2,18 @@
 # Author: mortael
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
+from __future__ import unicode_literals
 import sys
-from urllib.parse import urlencode, parse_qsl
+from six.moves import urllib_parse
 import requests
-import xbmcgui
-import xbmcplugin
+from kodi_six import xbmcplugin, xbmcgui
 import re
+import six
 
 from resources.lib import constants
 from resources.lib import api
 from resources.lib import kodi
+
 
 
 _url = sys.argv[0]
@@ -19,7 +21,7 @@ _handle = int(sys.argv[1])
 
 
 def get_url(**kwargs):
-    return '{0}?{1}'.format(_url, urlencode(kwargs))
+    return '{0}?{1}'.format(_url, urllib_parse.urlencode(kwargs))
 
 
 def get_shows(url):
@@ -103,14 +105,15 @@ def play_video(path):
     data = data.json()
     lurl = data.get('widevineUrl')
     play_item = xbmcgui.ListItem()
-    play_item.setProperty('inputstream', 'inputstream.adaptive')
+    IA = 'inputstream' if six.PY3 else 'inputstreamaddon'
+    play_item.setProperty(IA, 'inputstream.adaptive')
     if lurl:
         is_helper = Helper('mpd', drm='com.widevine.alpha')
         if is_helper.check_inputstream():
             strurl = data.get('dashUrl')
             headers.pop('Authorization')
             lic = lurl + '|Origin=https://www.corridordigital.com&Content-Type= |R{SSM}|'
-            play_item.setProperty('inputstream.adaptive.stream_headers', urlencode(headers))        
+            play_item.setProperty('inputstream.adaptive.stream_headers', urllib_parse.urlencode(headers))        
             play_item.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
             play_item.setProperty('inputstream.adaptive.license_key', lic)
             play_item.setProperty('inputstream.adaptive.manifest_type', 'mpd')
@@ -123,8 +126,7 @@ def play_video(path):
         if is_helper.check_inputstream():
             hlsurl = data.get('hlsUrl')
             uid = data.get('uid')
-            crap = re.findall(r'https:\/\/cdn.watchcorridor.com\/videos\/([^\/]+)', hlsurl)[0]
-            lic = 'uid={1}&platform=Web|{2}'.format(crap, uid, urlencode(headers))
+            lic = 'uid={0}&platform=Web|{1}'.format(uid, urllib_parse.urlencode(headers))
             play_item.setProperty('inputstream.adaptive.license_key', lic)
             play_item.setProperty('inputstream.adaptive.manifest_type', 'hls')
             play_item.setMimeType('application/vnd.apple.mpegstream_url')
@@ -134,7 +136,7 @@ def play_video(path):
 
 
 def router(paramstring):
-    params = dict(parse_qsl(paramstring))
+    params = dict(urllib_parse.parse_qsl(paramstring))
     if params:
         if params['action'] == 'listing':
             list_videos(params['url'], params['category'], params['name'])
