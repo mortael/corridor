@@ -58,8 +58,9 @@ def list_categories(url):
     xbmcplugin.endOfDirectory(_handle)
 
 
-def list_videos(url, category, name):
-    xbmcplugin.setPluginCategory(_handle, name)
+def list_videos(url, category, catname=None):
+    if catname:
+        xbmcplugin.setPluginCategory(_handle, catname)
     xbmcplugin.setContent(_handle, 'videos')
     videos = get_videos(url, category)
     for video in videos:
@@ -87,7 +88,6 @@ def list_videos(url, category, name):
         itemurl = get_url(action='play', video=videoid)
         is_folder = False
         xbmcplugin.addDirectoryItem(_handle, itemurl, list_item, is_folder)
-    xbmcplugin.endOfDirectory(_handle)
 
 
 def play_video(path):
@@ -140,6 +140,9 @@ def router(paramstring):
     if params:
         if params['action'] == 'listing':
             list_videos(params['url'], params['category'], params['name'])
+            xbmcplugin.endOfDirectory(_handle)
+        elif params['action'] == 'shows':
+            list_categories(constants.SHOWS)
         elif params['action'] == 'play':
             play_video(params['video'])
         else:
@@ -148,8 +151,13 @@ def router(paramstring):
         email = kodi.get_setting('email')
         if email == '':
             list_videos(constants.MAIN, '58', 'Free videos')
+            xbmcplugin.endOfDirectory(_handle)
         else:
-            list_categories(constants.SHOWS)
+            list_item = xbmcgui.ListItem(label='Shows')
+            xbmcplugin.addDirectoryItem(_handle, get_url(action='shows'), list_item, True)
+            list_videos(constants.MAIN, '9', 'Latest videos')
+            list_videos(constants.MAIN, '23')
+            xbmcplugin.endOfDirectory(_handle)
 
 
 if __name__ == '__main__':
