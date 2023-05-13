@@ -97,7 +97,7 @@ def play_video(path):
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:85.0) Gecko/20100101 Firefox/85.0',
              'Origin': 'https://www.corridordigital.com',
              'Authorization': 'bearer {0}'.format(token)}
-    url = 'https://content.watchcorridor.com/v3/video/{0}?platform=Web'.format(path)
+    url = 'https://content.watchcorridor.com/v4/video/{0}?platform=Web'.format(path)
     data = requests.get(url, headers=headers)
     if data.status_code != 200:
         #insert notification with failure to play
@@ -155,8 +155,8 @@ def router(paramstring):
         else:
             list_item = xbmcgui.ListItem(label='Shows')
             xbmcplugin.addDirectoryItem(_handle, get_url(action='shows'), list_item, True)
-            list_videos(constants.MAIN, '9', 'Latest videos')
-            list_videos(constants.MAIN, '23')
+            #list_videos(constants.MAIN, '9', 'Latest videos')
+            list_videos(constants.MAIN, '23', 'Latest videos')
             xbmcplugin.endOfDirectory(_handle)
 
 
