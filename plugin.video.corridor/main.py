@@ -7,7 +7,6 @@ import sys
 from six.moves import urllib_parse
 import requests
 from kodi_six import xbmcplugin, xbmcgui
-import re
 import six
 
 from resources.lib import constants
@@ -15,7 +14,7 @@ from resources.lib import api
 from resources.lib import kodi
 
 
-
+kodi.log(str(sys.argv))
 _url = sys.argv[0]
 _handle = int(sys.argv[1])
 
@@ -29,41 +28,47 @@ def get_shows(url):
     return shows
 
 
-def get_videos(url, showid):
-    shows = get_shows(url)
-    videos = [x['media'] for x in shows if x['id'] == int(showid)]
-    return videos[0]
-
-
 def list_categories(url):
     xbmcplugin.setPluginCategory(_handle, 'Shows')
     xbmcplugin.setContent(_handle, 'videos')
     shows = get_shows(url)
+    shows_dict = {}
+
     for show in shows:
-        name = show.get('name')
-        showid = show.get('id')
+        if 'media' in show:
+            for showitem in show['media']:
+                if 'seasonId' in showitem and showitem['seasonId'] not in shows_dict:
+                    shows_dict[showitem['seasonId']] = showitem
+
+    for show in sorted(shows_dict.values(), key=lambda x: x['title']):
+        name = show.get('title')
+        showid = show.get('seasonId')
         images = show.get('images')
-        list_item = xbmcgui.ListItem(label=name)
+        description = show.get('shortDescription')
+        list_item = xbmcgui.ListItem(label='{0} ({1})'.format(name, description))
         if images:
-            standardimage = [x['url'] for x in images if x['type'] == 'mini-wide']
+            standardimage = [x['url'] for x in images if x['type'] == 'thumbnail']
+            if not standardimage:
+                standardimage = [x['url'] for x in images if x['type'] == 'packshot']
             if standardimage:
                 list_item.setArt({'thumb': standardimage[0],
-                                'icon': standardimage[0]})
+                                  'icon': standardimage[0]})
         list_item.setInfo('video', {'title': name,
                                     'mediatype': 'video'})
-        itemurl = get_url(action='listing', category=showid, url=url, name=name)
+        itemurl = get_url(action='listing', category=showid, url=constants.SEASON, name=name)
         is_folder = True
         xbmcplugin.addDirectoryItem(_handle, itemurl, list_item, is_folder)
-    #xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
+    # xbmcplugin.addSortMethod(_handle, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
     xbmcplugin.endOfDirectory(_handle)
 
 
-def list_videos(url, category, catname=None):
+def list_videos(url, season, catname=None):
     if catname:
         xbmcplugin.setPluginCategory(_handle, catname)
     xbmcplugin.setContent(_handle, 'videos')
-    videos = get_videos(url, category)
-    for video in videos:
+    seasonurl = '{0}{1}'.format(url, season)
+    videos = get_shows(seasonurl)
+    for video in videos['media']:
         name = video.get('title')
         videoid = video.get('id')
         images = video.get('images')
@@ -83,7 +88,7 @@ def list_videos(url, category, catname=None):
             standardimage = [x['url'] for x in images if x['type'] == 'thumbnail']
             if standardimage:
                 list_item.setArt({'thumb': standardimage[0],
-                                'icon': standardimage[0]})
+                                  'icon': standardimage[0]})
         list_item.setProperty('IsPlayable', 'true')
         itemurl = get_url(action='play', video=videoid)
         is_folder = False
@@ -95,12 +100,12 @@ def play_video(path):
     token = api.login()
     path = '{0}/free'.format(path) if token == 'null' else path
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:85.0) Gecko/20100101 Firefox/85.0',
-             'Origin': 'https://www.corridordigital.com',
-             'Authorization': 'bearer {0}'.format(token)}
+               'Origin': 'https://www.corridordigital.com',
+               'Authorization': 'bearer {0}'.format(token)}
     url = 'https://content.watchcorridor.com/v4/video/{0}?platform=Web'.format(path)
     data = requests.get(url, headers=headers)
     if data.status_code != 200:
-        #insert notification with failure to play
+        # insert notification with failure to play
         return
     data = data.json()
     lurl = data.get('widevineUrl')
@@ -113,7 +118,7 @@ def play_video(path):
             strurl = data.get('dashUrl')
             headers.pop('Authorization')
             lic = lurl + '|Origin=https://www.corridordigital.com&Content-Type= |R{SSM}|'
-            play_item.setProperty('inputstream.adaptive.stream_headers', urllib_parse.urlencode(headers))        
+            play_item.setProperty('inputstream.adaptive.stream_headers', urllib_parse.urlencode(headers))
             play_item.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
             play_item.setProperty('inputstream.adaptive.license_key', lic)
             play_item.setProperty('inputstream.adaptive.manifest_type', 'mpd')
@@ -155,7 +160,7 @@ def router(paramstring):
         else:
             list_item = xbmcgui.ListItem(label='Shows')
             xbmcplugin.addDirectoryItem(_handle, get_url(action='shows'), list_item, True)
-            #list_videos(constants.MAIN, '9', 'Latest videos')
+            # list_videos(constants.MAIN, '9', 'Latest videos')
             list_videos(constants.MAIN, '23', 'Latest videos')
             xbmcplugin.endOfDirectory(_handle)
 
