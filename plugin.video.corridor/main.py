@@ -24,8 +24,7 @@ def get_url(**kwargs):
 
 
 def get_shows(url):
-    shows = requests.get(url).json()
-    return shows
+    return requests.get(url).json()
 
 
 def list_categories(url):
@@ -85,8 +84,9 @@ def list_videos(url, season, catname=None):
                                     'dateadded': dateadded,
                                     'premiered': premiered})
         if images:
-            standardimage = [x['url'] for x in images if x['type'] == 'thumbnail']
-            if standardimage:
+            if standardimage := [
+                x['url'] for x in images if x['type'] == 'thumbnail'
+            ]:
                 list_item.setArt({'thumb': standardimage[0],
                                   'icon': standardimage[0]})
         list_item.setProperty('IsPlayable', 'true')
@@ -141,8 +141,7 @@ def play_video(path):
 
 
 def router(paramstring):
-    params = dict(urllib_parse.parse_qsl(paramstring))
-    if params:
+    if params := dict(urllib_parse.parse_qsl(paramstring)):
         if params['action'] == 'listing':
             list_videos(params['url'], params['category'], params['name'])
             xbmcplugin.endOfDirectory(_handle)
@@ -156,13 +155,13 @@ def router(paramstring):
         email = kodi.get_setting('email')
         if email == '':
             list_videos(constants.MAIN, '58', 'Free videos')
-            xbmcplugin.endOfDirectory(_handle)
         else:
             list_item = xbmcgui.ListItem(label='Shows')
             xbmcplugin.addDirectoryItem(_handle, get_url(action='shows'), list_item, True)
             # list_videos(constants.MAIN, '9', 'Latest videos')
             list_videos(constants.MAIN, '23', 'Latest videos')
-            xbmcplugin.endOfDirectory(_handle)
+
+        xbmcplugin.endOfDirectory(_handle)
 
 
 if __name__ == '__main__':

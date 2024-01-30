@@ -5,6 +5,6 @@ LOGIN_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPasswo
 
 
 API = 'https://content-cache.watchcorridor.com/channels/v11'
-SHOWS = API + '/shows'
-MAIN = API + '?hero=false&showFree=true'
-SEASON = API + '/season/'
+SHOWS = f'{API}/shows'
+MAIN = f'{API}?hero=false&showFree=true'
+SEASON = f'{API}/season/'
