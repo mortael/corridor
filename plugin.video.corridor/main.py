@@ -2,7 +2,6 @@
 # Author: mortael
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 
-from __future__ import unicode_literals
 import sys
 from six.moves import urllib_parse
 import requests
