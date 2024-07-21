@@ -23,8 +23,9 @@ def get_url(**kwargs):
 
 
 def get_shows(url):
-    shows = requests.get(url).json()
-    return shows
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_videos(url, showid):
@@ -71,11 +72,7 @@ def list_shows(url):
     shows = get_shows(url)
     shows_dict = {}
 
-    for show in shows:
-        if 'media' in show:
-            for showitem in show['media']:
-                if 'seasonId' in showitem and showitem['seasonId'] not in shows_dict:
-                    shows_dict[showitem['seasonId']] = showitem
+    shows_dict = {showitem['seasonId']: showitem for show in shows if 'media' in show for showitem in show['media'] if 'seasonId' in showitem} 
 
     for show in sorted(shows_dict.values(), key=lambda x: x['title']):
         name = show.get('title')
@@ -84,9 +81,7 @@ def list_shows(url):
         description = show.get('shortDescription')
         list_item = xbmcgui.ListItem(label='{0} ({1})'.format(name, description))
         if images:
-            standardimage = [x['url'] for x in images if x['type'] == 'thumbnail']
-            if not standardimage:
-                standardimage = [x['url'] for x in images if x['type'] == 'packshot']
+            standardimage = [x['url'] for x in images if x['type'] == 'thumbnail'] or [x['url'] for x in images if x['type'] == 'packshot']
             if standardimage:
                 list_item.setArt({'thumb': standardimage[0],
                                   'icon': standardimage[0]})
@@ -121,11 +116,8 @@ def list_showvideos(url, season, catname=None):
                                     'mediatype': 'video',
                                     'dateadded': dateadded,
                                     'premiered': premiered})
-        if images:
-            standardimage = [x['url'] for x in images if x['type'] == 'thumbnail']
-            if standardimage:
-                list_item.setArt({'thumb': standardimage[0],
-                                  'icon': standardimage[0]})
+        if images and (standardimage := [x['url'] for x in images if x['type'] == 'thumbnail']):  
+            list_item.setArt({'thumb': standardimage[0], 'icon': standardimage[0]})
         list_item.setProperty('IsPlayable', 'true')
         itemurl = get_url(action='play', video=videoid)
         is_folder = False
@@ -140,11 +132,15 @@ def play_video(path):
                'Origin': 'https://www.corridordigital.com',
                'Authorization': 'bearer {0}'.format(token)}
     url = 'https://content.watchcorridor.com/v4/video/{0}?platform=Web'.format(path)
-    data = requests.get(url, headers=headers)
-    if data.status_code != 200:
+    response = requests.get(url, headers=headers, timeout=60)  
+   if response.status_code != 200:
         # insert notification with failure to play
         return
-    data = data.json()
+    try:  
+        data = response.json()  
+    except ValueError:  
+        # insert notification with failure to parse JSON  
+        return
     lurl = data.get('widevineUrl')
     subs = data.get('subtitles', [])
     play_item = xbmcgui.ListItem()
@@ -203,7 +199,7 @@ def router(paramstring):
             xbmcplugin.addDirectoryItem(_handle, get_url(action='shows'), list_item, True)
             # list_showvideos(constants.MAIN, '9', 'Latest videos')
             list_mainvideos(constants.MAIN, '23', 'Latest videos')
-            xbmcplugin.endOfDirectory(_handle)
+    xbmcplugin.endOfDirectory(_handle)
 
 
 if __name__ == '__main__':
