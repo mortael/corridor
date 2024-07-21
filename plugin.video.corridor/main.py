@@ -43,7 +43,7 @@ def list_mainvideos(url, category, catname=None):
         name = video.get('title')
         videoid = video.get('id')
         images = video.get('images')
-        plot = video.get('shortDescription') if video.get('shortDescription') else name
+        plot = video.get('shortDescription') or name
         duration = video.get('duration')
         videodate = video.get('datePublished')
         dateadded = videodate.split('+')[0].replace('T', ' ')
@@ -72,7 +72,7 @@ def list_shows(url):
     shows = get_shows(url)
     shows_dict = {}
 
-    shows_dict = {showitem['seasonId']: showitem for show in shows if 'media' in show for showitem in show['media'] if 'seasonId' in showitem} 
+    shows_dict = {showitem['seasonId']: showitem for show in shows if 'media' in show for showitem in show['media'] if 'seasonId' in showitem}
 
     for show in sorted(shows_dict.values(), key=lambda x: x['title']):
         name = show.get('title')
@@ -104,7 +104,7 @@ def list_showvideos(url, season, catname=None):
         name = video.get('title')
         videoid = video.get('id')
         images = video.get('images')
-        plot = video.get('shortDescription') if video.get('shortDescription') else name
+        plot = video.get('shortDescription') or name
         duration = video.get('duration')
         videodate = video.get('datePublished')
         dateadded = videodate.split('+')[0].replace('T', ' ')
@@ -116,7 +116,7 @@ def list_showvideos(url, season, catname=None):
                                     'mediatype': 'video',
                                     'dateadded': dateadded,
                                     'premiered': premiered})
-        if images and (standardimage := [x['url'] for x in images if x['type'] == 'thumbnail']):  
+        if images and (standardimage := [x['url'] for x in images if x['type'] == 'thumbnail']):
             list_item.setArt({'thumb': standardimage[0], 'icon': standardimage[0]})
         list_item.setProperty('IsPlayable', 'true')
         itemurl = get_url(action='play', video=videoid)
@@ -132,14 +132,14 @@ def play_video(path):
                'Origin': 'https://www.corridordigital.com',
                'Authorization': 'bearer {0}'.format(token)}
     url = 'https://content.watchcorridor.com/v4/video/{0}?platform=Web'.format(path)
-    response = requests.get(url, headers=headers, timeout=60)  
-   if response.status_code != 200:
+    response = requests.get(url, headers=headers, timeout=60)
+    if response.status_code != 200:
         # insert notification with failure to play
         return
-    try:  
-        data = response.json()  
-    except ValueError:  
-        # insert notification with failure to parse JSON  
+    try:
+        data = response.json()
+    except ValueError:
+        # insert notification with failure to parse JSON
         return
     lurl = data.get('widevineUrl')
     subs = data.get('subtitles', [])
@@ -148,7 +148,7 @@ def play_video(path):
     play_item.setProperty(IA, 'inputstream.adaptive')
     if subs:
         subtitles = subs.values()
-        play_item.setSubtitles(list(subtitles)) 
+        play_item.setSubtitles(list(subtitles))
     if lurl:
         is_helper = Helper('mpd', drm='com.widevine.alpha')
         if is_helper.check_inputstream():
