@@ -24,7 +24,7 @@ def get_url(**kwargs):
 
 
 def get_shows(url):
-    return requests.get(url).json()
+    return requests.get(url, timeout=60).json()
 
 
 def list_categories(url):
@@ -103,7 +103,7 @@ def play_video(path):
                'Origin': 'https://www.corridordigital.com',
                'Authorization': 'bearer {0}'.format(token)}
     url = 'https://content.watchcorridor.com/v4/video/{0}?platform=Web'.format(path)
-    data = requests.get(url, headers=headers)
+    data = requests.get(url, headers=headers, timeout=60)
     if data.status_code != 200:
         # insert notification with failure to play
         return
