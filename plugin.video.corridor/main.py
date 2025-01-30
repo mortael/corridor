@@ -5,13 +5,13 @@
 from __future__ import unicode_literals
 import sys
 from six.moves import urllib_parse
-import requests
 from kodi_six import xbmcplugin, xbmcgui
 import six
 
 from resources.lib import constants
 from resources.lib import api
 from resources.lib import kodi
+from security import safe_requests
 
 
 _url = sys.argv[0]
@@ -23,7 +23,7 @@ def get_url(**kwargs):
 
 
 def get_shows(url):
-    response = requests.get(url, timeout=60)
+    response = safe_requests.get(url, timeout=60)
     response.raise_for_status()
     return response.json()
 
@@ -132,7 +132,7 @@ def play_video(path):
                'Origin': 'https://www.corridordigital.com',
                'Authorization': 'bearer {0}'.format(token)}
     url = 'https://content.watchcorridor.com/v4/video/{0}?platform=Web'.format(path)
-    response = requests.get(url, headers=headers, timeout=60)
+    response = safe_requests.get(url, headers=headers, timeout=60)
     if response.status_code != 200:
         # insert notification with failure to play
         return
