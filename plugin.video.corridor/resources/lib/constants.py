@@ -1,10 +1,31 @@
-ANCHOR_URL = 'https://www.google.com/recaptcha/enterprise/anchor?ar=1&k=6LeL41IoAAAAAJZdOVxrDQLXoHffIxt0-lqGeig_&co=aHR0cHM6Ly93d3cuY29ycmlkb3JkaWdpdGFsLmNvbTo0NDM.&hl=en&v=pxZcVU8Dk73FyvFvdCgp2MSG&size=invisible&cb=k7yaql5jw3td'
-RELOAD_URL = 'https://www.google.com/recaptcha/enterprise/reload?k=6LeL41IoAAAAAJZdOVxrDQLXoHffIxt0-lqGeig_'
-APPCHECK_URL = 'https://content-firebaseappcheck.googleapis.com/v1/projects/watch-corridor/apps/1:390078941029:web:37dc352540c8a451f5c38c:exchangeRecaptchaEnterpriseToken?key=AIzaSyA3ndgjGDib-HOvDezM-cKl00NcncWtN50'
-LOGIN_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA3ndgjGDib-HOvDezM-cKl00NcncWtN50'
+# All API endpoints discovered from HAR capture 2026-03-31
 
+# Login endpoint
+LOGIN_URL = 'https://user.corridordigital.com/v2/account/login?platform=web'
 
-API = 'https://content-cache.watchcorridor.com/channels/v11'
-SHOWS = API + '/shows'
-MAIN = API + '?hero=false&showFree=true'
-SEASON = API + '/season/'
+# Content endpoints
+CONTENT_CACHE = 'https://content-cache.corridordigital.com'
+CONTENT = 'https://content.corridordigital.com'
+
+# Pages API
+HOME_PAGE = CONTENT_CACHE + '/pages/v1/home?pageRowSize=50'
+SHOWS_PAGE = CONTENT_CACHE + '/pages/v1/shows?pageRowSize=50'
+
+# Season/channel API
+SEASON_URL = CONTENT_CACHE + '/channels/v16/season/'
+
+# Video info endpoint
+VIDEO_URL = CONTENT + '/v5/video/{video_id}?platform=Web'
+
+# Watch history: GET returns [{mediaId, percentage, startTimeMs, position}, ...]
+WATCH_HISTORY_URL = 'https://user.corridordigital.com/v1/watchHistory'
+
+# Video progress report: POST {currentTime, totalTime, durationWatched} (all ms)
+# uid = video UUID from video info, video_id = numeric ID
+VIDEO_REPORT_URL = 'https://user.corridordigital.com/v1/videoReport/{uid}?platform=Web&videoId={video_id}'
+
+# Device identifier (stored in settings)
+DEVICE_ID_SETTING = 'device_id'
+
+# Percentage >= this = mark as watched in Kodi
+WATCHED_THRESHOLD = 90

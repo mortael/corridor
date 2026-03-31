@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="plugin.video.corridor"
-version="1.0.8"
+version="1.3.0"
 name="Corridor Digital"
 provider-name="mortael">
 <requires>
   <import addon="script.module.requests"/>
-  <import addon="script.module.six" />
   <import addon="script.module.kodi-six" />
   <import addon="script.module.inputstreamhelper" />
 </requires>
@@ -19,8 +18,7 @@ provider-name="mortael">
   <assets>
     <icon>icon.png</icon>
     <fanart>fanart.jpg</fanart>
-    <!-- <screenshot>resources\screenshot-01.jpg</screenshot> -->
   </assets>
-  <news>Initial release</news>
+  <news>v1.1.0: Full rewrite to new corridordigital.com API. Login now uses /v2/account/login (JWT). Browse via pages/v1 and channels/v16 APIs. FlareSolverr support for Cloudflare bypass.</news>
 </extension>
 </addon>
