@@ -53,8 +53,7 @@ def _pick_image(images, *preferred_types):
 def _get_token():
     if not kodi.get_setting('email'):
         return None
-    t = api.login()
-    return None if t == 'null' else t
+    return api.login()
 
 
 def _duration_secs(duration_str):
@@ -113,27 +112,30 @@ def _add_video_item(video, watch_history=None):
     watched = percentage >= constants.WATCHED_THRESHOLD
     playcount = 1 if watched else 0
 
-    info = {
-        'title': label,
-        'plot': plot,
-        'mediatype': 'video',
-        'dateadded': dateadded,
-        'premiered': premiered,
-        'duration': dur_secs,
-        'playcount': playcount,
-    }
-    # Resume position (only if not fully watched)
-    if resume_ms and not watched and dur_secs:
-        info['resumetime'] = resume_ms / 1000
-        info['totaltime'] = dur_secs
-
     list_item = xbmcgui.ListItem(label=label)
-    list_item.setInfo('video', info)
 
     thumb = _pick_image(images, 'thumbnail', 'packshot', 'hero-web', 'hero-mobile')
     fanart = _pick_image(images, 'hero-web', 'hero-mobile', 'thumbnail')
     if thumb:
         list_item.setArt({'thumb': thumb, 'icon': thumb, 'fanart': fanart})
+
+    # Kodi 21+: use InfoTagVideo API instead of deprecated setInfo()
+    tag = list_item.getVideoInfoTag()
+    tag.setTitle(label)
+    tag.setPlot(plot)
+    tag.setMediaType('video')
+    if dateadded:
+        tag.setDateAdded(dateadded)
+    if premiered:
+        tag.setPremiered(premiered)
+    if dur_secs:
+        tag.setDuration(dur_secs)
+    tag.setPlaycount(playcount)
+
+    # Resume position
+    if resume_ms and not watched and dur_secs:
+        list_item.setProperty('ResumeTime', str(int(resume_ms / 1000)))
+        list_item.setProperty('TotalTime', str(dur_secs))
 
     list_item.setProperty('IsPlayable', 'true')
     return list_item, get_url(action='play', video=vid_id), False
@@ -149,12 +151,16 @@ def _add_show_folder(show):
     label = ('[COLOR gold]\u2605[/COLOR] ' if exclusive else '') + name
 
     list_item = xbmcgui.ListItem(label=label)
-    list_item.setInfo('video', {'title': name, 'plot': desc, 'mediatype': 'video'})
 
     thumb = _pick_image(images, 'packshot', 'thumbnail', 'feature-logo')
     fanart = _pick_image(images, 'hero-web', 'hero-web-slim', 'packshot')
     if thumb:
         list_item.setArt({'thumb': thumb, 'icon': thumb, 'fanart': fanart})
+
+    tag = list_item.getVideoInfoTag()
+    tag.setTitle(name)
+    tag.setPlot(desc)
+    tag.setMediaType('video')
 
     return list_item, get_url(action='season', season_id=season_id, name=name), True
 
@@ -174,6 +180,7 @@ def list_home():
         return
 
     shows_item = xbmcgui.ListItem(label='Shows')
+    shows_item.getVideoInfoTag().setTitle('Shows')
     xbmcplugin.addDirectoryItem(_handle, get_url(action='shows'), shows_item, True)
 
     for row in data.get('pageRows', []):
@@ -186,12 +193,12 @@ def list_home():
 
         if row_type in VIDEO_ROW_TYPES:
             item = xbmcgui.ListItem(label='{0} ({1})'.format(row_name, len(media)))
-            item.setInfo('video', {'plot': row_name})
+            item.getVideoInfoTag().setPlot(row_name)
             item_url = get_url(action='videorow', row_type=row_type, row_name=row_name)
             xbmcplugin.addDirectoryItem(_handle, item_url, item, True)
         elif row_type in SHOW_ROW_TYPES:
             item = xbmcgui.ListItem(label='{0} ({1})'.format(row_name, len(media)))
-            item.setInfo('video', {'plot': row_name})
+            item.getVideoInfoTag().setPlot(row_name)
             item_url = get_url(action='showrow', row_type=row_type, row_name=row_name)
             xbmcplugin.addDirectoryItem(_handle, item_url, item, True)
 
@@ -323,6 +330,7 @@ def play_video(video_id):
     """
     from inputstreamhelper import Helper
     from resources.lib.player import CorridorPlayer
+    from resources.lib.license_proxy import LicenseProxy
 
     token = _get_token()
     device_id = kodi.get_setting(constants.DEVICE_ID_SETTING)
@@ -369,19 +377,24 @@ def play_video(video_id):
     if dash_url:
         is_helper = Helper('mpd', drm='com.widevine.alpha')
         if is_helper.check_inputstream():
+            # Route license requests through our local proxy so we control
+            # exactly what headers are sent to kms.corridordigital.com.
+            # Browser HAR shows: no Content-Type, no Authorization — just
+            # Origin + User-Agent + raw Widevine challenge as POST body.
+            proxy = LicenseProxy()
+            proxy.start()
+            proxied_license_url = proxy.license_url(widevine_url)
+
             stream_headers = urllib_parse.urlencode({
                 'User-Agent': UA,
                 'Origin': 'https://www.corridordigital.com',
             })
-            lic_headers = 'Origin=https://www.corridordigital.com'
-            if token:
-                lic_headers += '&Authorization=bearer ' + token
-            lic_key = '{0}|{1}|R{{SSM}}|'.format(widevine_url, lic_headers)
 
             play_item.setProperty('inputstream', 'inputstream.adaptive')
-            play_item.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-            play_item.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-            play_item.setProperty('inputstream.adaptive.license_key', lic_key)
+            # drm_legacy: KeySystem|LicenseURL|Headers
+            # License URL points to our local proxy which forwards to real KMS
+            play_item.setProperty('inputstream.adaptive.drm_legacy',
+                                  'com.widevine.alpha|{0}|'.format(proxied_license_url))
             play_item.setProperty('inputstream.adaptive.stream_headers', stream_headers)
             play_item.setMimeType('application/dash+xml')
             play_item.setPath(dash_url)
@@ -405,23 +418,21 @@ def play_video(video_id):
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
         return
 
-    # Monitor playback and report progress back to the site
+    # Monitor playback and report progress, then stop the proxy
+    # CorridorPlayer gets actual duration from Kodi's getTotalTime()
     if token and uid:
-        # Get actual video duration from Kodi player itself
-        # Get total duration in ms from watch history or estimate from video info
-        history = api.get_watch_history(token)
-        entry = history.get(int(video_id), {})
-        # We'll get real total from the player once running
-        # Use a generous estimate; the player will use actual getTime()
-        total_ms = entry.get('startTimeMs', 0)  # fallback, player overrides
-
-        player = CorridorPlayer(
-            token=token,
-            uid=uid,
-            video_id=numeric_video_id,
-            total_ms=total_ms,
-        )
+        player = CorridorPlayer(token=token, uid=uid, video_id=numeric_video_id)
         player.monitor()
+        if resolved:
+            try:
+                proxy.stop()
+            except Exception:
+                pass
+    elif resolved:
+        try:
+            proxy.stop()
+        except Exception:
+            pass
 
 
 def router(paramstring):
