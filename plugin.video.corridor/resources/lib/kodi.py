@@ -1,4 +1,4 @@
-from kodi_six import xbmc, xbmcaddon
+import xbmc, xbmcaddon
 
 addon = xbmcaddon.Addon()
 pluginname = addon.getAddonInfo("name")
