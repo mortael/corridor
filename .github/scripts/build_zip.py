@@ -84,10 +84,39 @@ def generate_section(version):
     return f"v{version} (changes since v{pv})\n" + "\n".join(lines) + "\n"
 
 
+def normalize(rel, data):
+    if rel == "addon.xml":
+        t = data.decode("utf-8")
+        t = re.sub(r'(<addon[^>]*\sversion=")[^"]*"', r'\1"', t, count=1)
+        t = re.sub(r"<news>.*?</news>", "<news/>", t, flags=re.S)
+        return t.encode("utf-8")
+    return data
+
+
+def maybe_bump(xml, version):
+    """If a zip for this version exists and the code changed since, bump the patch version."""
+    zpath = ROOT / f"{ADDON_ID}-{version}.zip"
+    if not zpath.exists():
+        return xml, version
+    old, new = read_prev(zpath), read_current()
+    old["addon.xml"] = old.get("addon.xml", b"")
+    keys = old.keys() | new.keys()
+    if all(normalize(k, old.get(k, b"")) == normalize(k, new.get(k, b"")) for k in keys) and old.keys() == new.keys():
+        return xml, version
+    parts = [int(x) for x in version.split(".")]
+    parts[-1] += 1
+    nv = ".".join(map(str, parts))
+    xml = re.sub(r'(<addon[^>]*\sversion=")[^"]*"', lambda m: f'{m.group(1)}{nv}"', xml, count=1)
+    (ADDON_DIR / "addon.xml").write_text(xml, encoding="utf-8")
+    print(f"bumped version {version} -> {nv}")
+    return xml, nv
+
+
 def main():
     xml_path = ADDON_DIR / "addon.xml"
     xml = xml_path.read_text(encoding="utf-8")
     version = re.search(r'<addon[^>]*\sversion="([^"]+)"', xml).group(1)
+    xml, version = maybe_bump(xml, version)
 
     # Current version's changelog section only
     log_path = ADDON_DIR / "changelog.txt"
