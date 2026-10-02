@@ -1,0 +1,6 @@
+v1.3.7
+- Removed script.module.kodi-six dependency (Python 3 only)
+- Kodi 21/22 compatible packaging
+
+v1.3.6
+- Previous release
