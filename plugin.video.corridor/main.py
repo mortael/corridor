@@ -3,11 +3,10 @@
 # License: GPL v.3 https://www.gnu.org/copyleft/gpl.html
 # v1.3.0: Watch history sync + progress reporting back to corridordigital.com
 
-from __future__ import unicode_literals
 import sys
 import requests
 from urllib import parse as urllib_parse
-from kodi_six import xbmcplugin, xbmcgui
+import xbmcplugin, xbmcgui
 
 from resources.lib import constants
 from resources.lib import api
