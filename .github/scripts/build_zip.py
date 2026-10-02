@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build the addon zip, sync addon.xml <news> with changelog.txt, prune old zips."""
+import difflib
 import re
 import sys
 import zipfile
@@ -15,17 +16,88 @@ def vkey(v):
     return tuple(int(p) for p in re.findall(r"\d+", v))
 
 
+SKIP = {"changelog.txt"}
+
+
+def previous_zip(version):
+    best = None
+    for p in ROOT.glob(f"{ADDON_ID}-*.zip"):
+        m = re.fullmatch(re.escape(ADDON_ID) + r"-(\d+(?:\.\d+)*)\.zip", p.name)
+        if m and vkey(m.group(1)) < vkey(version) and (best is None or vkey(m.group(1)) > vkey(best[0])):
+            best = (m.group(1), p)
+    return best
+
+
+def read_prev(zpath):
+    out = {}
+    prefix = ADDON_ID + "/"
+    with zipfile.ZipFile(zpath) as z:
+        for n in z.namelist():
+            rel = n[len(prefix):] if n.startswith(prefix) else n
+            if rel and not n.endswith("/") and rel not in SKIP:
+                out[rel] = z.read(n)
+    return out
+
+
+def read_current():
+    out = {}
+    for f in ADDON_DIR.rglob("*"):
+        if f.is_file() and "__pycache__" not in f.parts and f.suffix != ".pyc" and f.name not in EXCLUDE:
+            rel = f.relative_to(ADDON_DIR).as_posix()
+            if rel not in SKIP:
+                out[rel] = f.read_bytes()
+    return out
+
+
+def line_delta(old, new):
+    try:
+        a = old.decode("utf-8").splitlines()
+        b = new.decode("utf-8").splitlines()
+    except UnicodeDecodeError:
+        return None
+    add = rem = 0
+    for line in difflib.ndiff(a, b):
+        if line.startswith("+ "):
+            add += 1
+        elif line.startswith("- "):
+            rem += 1
+    return add, rem
+
+
+def generate_section(version):
+    prev = previous_zip(version)
+    if prev is None:
+        return f"v{version}\n- Release {version}\n"
+    pv, pzip = prev
+    old, new = read_prev(pzip), read_current()
+    lines = []
+    for f in sorted(new.keys() - old.keys()):
+        lines.append(f"- Added {f}")
+    for f in sorted(old.keys() - new.keys()):
+        lines.append(f"- Removed {f}")
+    for f in sorted(new.keys() & old.keys()):
+        if new[f] != old[f]:
+            d = line_delta(old[f], new[f])
+            lines.append(f"- Updated {f}" + (f" (+{d[0]}/-{d[1]} lines)" if d else ""))
+    if not lines:
+        lines = ["- No code changes"]
+    return f"v{version} (changes since v{pv})\n" + "\n".join(lines) + "\n"
+
+
 def main():
     xml_path = ADDON_DIR / "addon.xml"
     xml = xml_path.read_text(encoding="utf-8")
     version = re.search(r'<addon[^>]*\sversion="([^"]+)"', xml).group(1)
 
     # Current version's changelog section only
-    log = (ADDON_DIR / "changelog.txt").read_text(encoding="utf-8")
+    log_path = ADDON_DIR / "changelog.txt"
+    log = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
     sections = re.split(r"(?m)^(?=v\d)", log)
-    current = next((s for s in sections if s.startswith(f"v{version}\n") or s.startswith(f"v{version} ")), None)
+    current = next((s for s in sections if re.match(rf"v{re.escape(version)}(\s|$)", s)), None)
     if current is None:
-        sys.exit(f"changelog.txt has no section for v{version}")
+        current = generate_section(version)
+        log_path.write_text(current + "\n" + log, encoding="utf-8")
+        print(f"generated changelog section for v{version}")
     news = current.strip()
     esc = news.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     xml = re.sub(r"<news>.*?</news>", lambda m: f"<news>{esc}</news>", xml, flags=re.S)
