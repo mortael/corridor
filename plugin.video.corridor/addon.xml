@@ -20,7 +20,9 @@ provider-name="mortael">
     <fanart>fanart.jpg</fanart>
   </assets>
   <news>v1.3.7
-- Removed script.module.kodi-six dependency (Python 3 only)
-- Kodi 21/22 compatible packaging</news>
+- Removed the script.module.kodi-six dependency from addon.xml
+- main.py, kodi.py, player.py: import xbmc, xbmcplugin, xbmcgui and xbmcaddon directly (Python 3 only)
+- main.py: removed the unneeded "from __future__ import unicode_literals"
+- addon.xml: now requires xbmc.python 3.0.1 (Kodi 21/22)</news>
 </extension>
 </addon>
