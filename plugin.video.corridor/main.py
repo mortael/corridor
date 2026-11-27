@@ -133,8 +133,7 @@ def _add_video_item(video, watch_history=None):
 
     # Resume position
     if resume_ms and not watched and dur_secs:
-        list_item.setProperty('ResumeTime', str(int(resume_ms / 1000)))
-        list_item.setProperty('TotalTime', str(dur_secs))
+        tag.setResumePoint(resume_ms / 1000.0, float(dur_secs))
 
     list_item.setProperty('IsPlayable', 'true')
     return list_item, get_url(action='play', video=vid_id), False

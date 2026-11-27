@@ -1,3 +1,6 @@
+v1.3.8
+- main.py: set resume position via InfoTagVideo.setResumePoint() instead of the deprecated ResumeTime/TotalTime list item properties
+
 v1.3.7
 - Removed the script.module.kodi-six dependency from addon.xml
 - main.py, kodi.py, player.py: import xbmc, xbmcplugin, xbmcgui and xbmcaddon directly (Python 3 only)
