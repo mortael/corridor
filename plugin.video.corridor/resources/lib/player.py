@@ -2,7 +2,7 @@
 # Monitors playback and reports progress back to corridordigital.com
 
 import time
-from kodi_six import xbmc
+import xbmc
 from resources.lib import api
 from resources.lib import kodi
 
